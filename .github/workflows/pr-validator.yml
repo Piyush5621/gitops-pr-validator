@@ -1,33 +1,24 @@
-name: Java PR Validator
+name: DevSecOps Pipeline
 
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+on: [pull_request]
 
 jobs:
-  validate-pr:
+  security-gate:
     runs-on: ubuntu-latest
-
     permissions:
-      pull-requests: write # Allow the bot to comment
-      contents: read
-
+      pull-requests: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Set up JDK 11
-        uses: actions/setup-java@v3
-        with:
-          java-version: '11'
-          distribution: 'temurin'
-          cache: maven
+      - name: Build Docker Image
+        run: docker build -t devsecops-bot .
 
-      - name: Build and Run Validator
+      - name: Run Governance Bot
         env:
-          # We map the Secret we created to the Environment Variable the Java code looks for
-          GITHUB_TOKEN: ${{ secrets.MY_PAT }} 
+          GITHUB_TOKEN: ${{ secrets.MY_PAT }}
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: mvn clean compile exec:java
+          # DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }} # Add this if you did the Discord step
+        run: docker run -e GITHUB_TOKEN -e REPO_OWNER -e REPO_NAME -e PR_NUMBER devsecops-bot
